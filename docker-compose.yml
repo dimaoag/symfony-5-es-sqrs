@@ -60,6 +60,7 @@ services:
       - mysql
       - rmq
       - elasticsearch
+
   workers_users:
     build:
       dockerfile: etc/artifact/Dockerfile

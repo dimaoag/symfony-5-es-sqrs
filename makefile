@@ -10,19 +10,29 @@ endif
 
 export compose env docker-os
 
-.PHONY: start
-start: erase build start-deps up db ## clean current environment, recreate dependencies and spin up again
+.PHONY: init
+init: erase build start-deps start db ## clean current environment, recreate dependencies and spin start again
 
 .PHONY: start-deps
 start-deps:  ## Start all dependencies and wait for it
 		$(compose) run --rm start_dependencies
 
+.PHONY: start
+start: start-deps up db
+
+.PHONY: up
+up:
+		$(compose) up -d
+
 .PHONY: stop
 stop: ## stop environment
-		$(compose) stop $(s)
+		$(compose) down --remove-orphans
+
+.PHONY: restart
+restart: stop start
 
 .PHONY: rebuild
-rebuild: start ## same as start
+rebuild: init ## same as init
 
 .PHONY: erase
 erase: ## stop and delete containers, clean volumes.
@@ -51,9 +61,6 @@ artifact: ## build production artifact
 composer-update: ## Update project dependencies
 		$(compose) run --rm code sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer update'
 
-.PHONY: up
-up: ## spin up environment
-		$(compose) up -d
 
 .PHONY: phpunit
 phpunit: db ## execute project unit tests
@@ -109,7 +116,7 @@ xon: ## activate xdebug simlink
 xoff: ## deactivate xdebug
 		$(compose) exec -T php sh -lc 'xoff | true'
 		make s='php workers_events workers_users' stop
-		make up
+		make start
 
 .PHONY: sh
 sh: ## gets inside a container, use 's' variable to select a service. make s=php sh
@@ -123,7 +130,7 @@ logs: ## look for 's' service logs, make s=php logs
 minikube:
 		@eval $$(minikube docker-env); \
 		docker-compose -f etc/artifact/docker-compose.yml build --parallel; \
-		helm dep up etc/artifact/chart; \
+		helm dep start etc/artifact/chart; \
 		helm upgrade -i cqrs etc/artifact/chart
 
 .PHONY: htemplate
