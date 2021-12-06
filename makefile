@@ -15,18 +15,18 @@ init: erase build start-deps start db ## clean current environment, recreate dep
 
 .PHONY: start-deps
 start-deps:  ## Start all dependencies and wait for it
-		$(compose) run --rm start_dependencies
+	$(compose) run --rm start_dependencies
 
 .PHONY: start
 start: start-deps up db
 
 .PHONY: up
 up:
-		$(compose) up -d
+	$(compose) up -d
 
 .PHONY: stop
 stop: ## stop environment
-		$(compose) down --remove-orphans
+	$(compose) down --remove-orphans
 
 .PHONY: restart
 restart: stop start
@@ -36,56 +36,56 @@ rebuild: init ## same as init
 
 .PHONY: erase
 erase: ## stop and delete containers, clean volumes.
-		touch .env.blackfire
-		$(compose) stop
-		docker-compose rm -v -f
+	touch .env.blackfire
+	$(compose) stop
+	docker-compose rm -v -f
 
 .PHONY: build
 build: ## build environment and initialize composer and project dependencies
-		$(compose) build --parallel
+	$(compose) build --parallel
 
-		if [ env = "prod" ]; then \
-			echo Building in $(env) mode; \
-			$(compose) run --rm php sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer install --no-ansi --no-dev --no-interaction --no-plugins --no-progress --no-scripts --no-suggest --optimize-autoloader'; \
-		else \
-			$(compose) run --rm php sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer install'; \
-		fi
+	if [ env = "prod" ]; then \
+		echo Building in $(env) mode; \
+		$(compose) run --rm php sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer install --no-ansi --no-dev --no-interaction --no-plugins --no-progress --no-scripts --no-suggest --optimize-autoloader'; \
+	else \
+		$(compose) run --rm php sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer install'; \
+	fi
 
 .PHONY: build-ci
 
 .PHONY: artifact
 artifact: ## build production artifact
-		docker-compose -f etc/artifact/docker-compose.yml build
+	docker-compose -f etc/artifact/docker-compose.yml build
 
 .PHONY: composer-update
 composer-update: ## Update project dependencies
-		$(compose) run --rm code sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer update'
+	$(compose) run --rm code sh -lc 'xoff;COMPOSER_MEMORY_LIMIT=-1 composer update'
 
 
 .PHONY: phpunit
 phpunit: db ## execute project unit tests
-		$(compose) exec -T php sh -lc "XDEBUG_MODE=coverage ./vendor/bin/phpunit $(conf)"
+	$(compose) exec -T php sh -lc "XDEBUG_MODE=coverage ./vendor/bin/phpunit $(conf)"
 
 .PHONY: coverage
 coverage:
-		$(compose) run --rm php sh -lc "wget -q https://github.com/php-coveralls/php-coveralls/releases/download/v2.2.0/php-coveralls.phar; \
-			chmod +x php-coveralls.phar; \
-			export COVERALLS_RUN_LOCALLY=1; \
-			export COVERALLS_EVENT_TYPE='manual'; \
-			export CI_NAME='github-actions'; \
-			php ./php-coveralls.phar -v; \
-		"
+	$(compose) run --rm php sh -lc "wget -q https://github.com/php-coveralls/php-coveralls/releases/download/v2.2.0/php-coveralls.phar; \
+		chmod +x php-coveralls.phar; \
+		export COVERALLS_RUN_LOCALLY=1; \
+		export COVERALLS_EVENT_TYPE='manual'; \
+		export CI_NAME='github-actions'; \
+		php ./php-coveralls.phar -v; \
+	"
 .PHONY: phpstan
 phpstan: ## executes php analizers
-		$(compose) run --rm code sh -lc './vendor/bin/phpstan analyse -l 6 -c phpstan.neon src tests'
+	$(compose) run --rm code sh -lc './vendor/bin/phpstan analyse -l 6 -c phpstan.neon src tests'
 
 .PHONY: psalm
 psalm: ## execute psalm analyzer
-		$(compose) run --rm code sh -lc './vendor/bin/psalm --show-info=false'
+	$(compose) run --rm code sh -lc './vendor/bin/psalm --show-info=false'
 
 .PHONY: cs
 cs: ## executes coding standards
-		$(compose) run --rm code sh -lc './vendor/bin/ecs check src tests --fix'
+	$(compose) run --rm code sh -lc './vendor/bin/ecs check src tests --fix'
 
 .PHONY: cs-check
 cs-check: ## executes coding standards in dry run mode
@@ -94,48 +94,48 @@ cs-check: ## executes coding standards in dry run mode
 
 .PHONY: layer
 layer: ## Check issues with layers
-		$(compose) run --rm code sh -lc 'bin/deptrac.phar analyze --formatter-graphviz=0'
+	$(compose) run --rm code sh -lc 'bin/deptrac.phar analyze --formatter-graphviz=0'
 
 .PHONY: db
 db: ## recreate database
-		$(compose) exec -T php sh -lc './bin/console d:d:d --force --if-exists'
-		$(compose) exec -T php sh -lc './bin/console d:d:c --if-not-exists'
-		$(compose) exec -T php sh -lc './bin/console d:m:m -n'
+	$(compose) exec -T php sh -lc './bin/console d:d:d --force --if-exists'
+	$(compose) exec -T php sh -lc './bin/console d:d:c --if-not-exists'
+	$(compose) exec -T php sh -lc './bin/console d:m:m -n'
 .PHONY: dmd
 dmd: ## Generate migrations diff file
-		$(compose) exec -T php sh -lc './bin/console d:m:diff'
+	$(compose) exec -T php sh -lc './bin/console d:m:diff'
 .PHONY: schema-validate
 schema-validate: ## validate database schema
-		$(compose) exec -T php sh -lc './bin/console d:s:v'
+	$(compose) exec -T php sh -lc './bin/console d:s:v'
 
 .PHONY: xon
 xon: ## activate xdebug simlink
-		$(compose) exec -T php sh -lc 'xon | true'
+	$(compose) exec -T php sh -lc 'xon | true'
 
 .PHONY: xoff
 xoff: ## deactivate xdebug
-		$(compose) exec -T php sh -lc 'xoff | true'
-		make s='php workers_events workers_users' stop
-		make start
+	$(compose) exec -T php sh -lc 'xoff | true'
+	make s='php workers_events workers_users' stop
+	make start
 
 .PHONY: sh
 sh: ## gets inside a container, use 's' variable to select a service. make s=php sh
-		$(compose) exec $(s) sh -l
+	$(compose) exec $(s) sh -l
 
 .PHONY: logs
 logs: ## look for 's' service logs, make s=php logs
-		$(compose) logs -f $(s)
+	$(compose) logs -f $(s)
 
 .PHONY: minikube
 minikube:
-		@eval $$(minikube docker-env); \
-		docker-compose -f etc/artifact/docker-compose.yml build --parallel; \
-		helm dep start etc/artifact/chart; \
-		helm upgrade -i cqrs etc/artifact/chart
+	@eval $$(minikube docker-env); \
+	docker-compose -f etc/artifact/docker-compose.yml build --parallel; \
+	helm dep start etc/artifact/chart; \
+	helm upgrade -i cqrs etc/artifact/chart
 
 .PHONY: htemplate
 htemplate:
-		helm template cqrs etc/artifact/chart
+	helm template cqrs etc/artifact/chart
 
 .PHONY: help
 help: ## Display this help message
